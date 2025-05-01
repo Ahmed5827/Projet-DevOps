@@ -9,6 +9,7 @@ from app import db
 # Creating blueprint with url_prefix for all the authentication routes
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -23,12 +24,13 @@ def register():
         return redirect(url_for('auth.login'))
     return render_template('auth/register.html', title='Register', form=form)
 
+
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     # Handle the user login
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
-    
+
     form = LoginForm()
     if form.validate_on_submit():
         # To verify the user's credentials
@@ -36,13 +38,14 @@ def login():
         if user is None or not user.check_password(form.password.data):
             flash('Invalid username or password', 'danger')
             return redirect(url_for('auth.login'))
-        
+
         login_user(user)
         flash('You have been logged in successfully!', 'success')
         next_page = request.args.get('next')
         return redirect(next_page if next_page else url_for('main.index'))
-    
+
     return render_template('auth/login.html', title='Login', form=form)
+
 
 @bp.route('/logout')
 def logout():
