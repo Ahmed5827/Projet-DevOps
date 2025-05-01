@@ -1,4 +1,4 @@
-name: Helpdesk App CI/CD
+name: Ticket Management System CI/CD
 
 on:
   push:
