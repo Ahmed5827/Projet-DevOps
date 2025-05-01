@@ -25,10 +25,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
+          pip install pytest pytest-cov
 
-      - name: Run pytest
-        run: pytest
+      - name: Run pytest with coverage
+        run: pytest --cov=app tests/ -v
 
   build-and-push:
     name: Build & Push Docker image
@@ -45,7 +45,7 @@ jobs:
         run: docker build -t ticket-management-system-projet-devops:latest .
 
       - name: Test Docker image
-        run: docker run --rm ticket-management-system-projet-devops:latest python -m pytest
+        run: docker run --rm -e TEST_MODE=true ticket-management-system-projet-devops:latest python -m pytest
 
       - name: Log in to Docker Hub
         env:
