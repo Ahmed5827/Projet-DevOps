@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
   pull_request:
     branches:
       - main
@@ -30,56 +31,66 @@ jobs:
       - name: Run pytest with coverage
         run: pytest --cov=app tests/ -v
 
-  build-and-push:
-    name: Build & Push Docker image
+  terraform-deploy:
+    name: Deploy Container with Terraform
     needs: test
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Create infra directory if it doesn't exist
+        run: mkdir -p infra
+
+      - name: Create Terraform configuration
+        run: |
+          cat > infra/main.tf << 'EOF'
+          terraform {
+            required_providers {
+              docker = {
+                source  = "kreuzwerker/docker"
+                version = "~> 3.0"
+              }
+            }
+          }
+
+          provider "docker" {}
+
+          resource "docker_image" "myapp" {
+            name = "myapp"
+            build {
+              context = "${path.module}/.."
+            }
+          }
+
+          resource "docker_container" "myapp" {
+            name = "myapp"
+            image = docker_image.myapp.latest
+
+            ports {
+              internal = 5000
+              external = 5000
+            }
+          }
+          EOF
+
+      - name: Set up Docker
         uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker image
-        run: docker build -t ticket-management-system-projet-devops:latest .
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./infra
 
-      - name: Test Docker image
-        run: docker run --rm -e TEST_MODE=true ticket-management-system-projet-devops:latest python -m pytest
+      - name: Terraform Plan
+        run: terraform plan
+        working-directory: ./infra
 
-      - name: Log in to Docker Hub
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        run: |
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-
-      - name: Tag for Docker Hub
-        run: docker tag ticket-management-system-projet-devops:latest ${{ secrets.DOCKER_USERNAME }}/ticket-management-system-projet-devops:latest
-
-      - name: Push to Docker Hub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/ticket-management-system-projet-devops:latest
-
-  deploy:
-    name: Deploy container
-    needs: build-and-push
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log in to Docker Hub
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        run: |
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-
-      - name: Pull latest image
-        run: docker pull ${{ secrets.DOCKER_USERNAME }}/ticket-management-system-projet-devops:latest
-
-      - name: Stop & remove existing container
-        run: |
-          docker stop ticket-management-system-projet-devops || true
-          docker rm ticket-management-system-projet-devops || true
-
-      - name: Run container
-        run: docker run -d -p 5000:5000 --name ticket-management-system-projet-devops ${{ secrets.DOCKER_USERNAME }}/ticket-management-system-projet-devops:latest
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: ./infra
