@@ -154,6 +154,7 @@ The project includes a GitHub Actions workflow that:
 4. Push to the branch: `git push origin feature-name`
 5. Submit a pull request
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+## Note
+### Admin credentials
+- username : ahmed
+- password : 1234dd
