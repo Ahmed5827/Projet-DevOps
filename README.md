@@ -134,6 +134,9 @@ The project includes a GitHub Actions workflow that:
 3. Pushes the Docker image to Docker Hub (on main branch)
 4. Deploys the container (on main branch)
 
+## Terraform Setup for CI/CD Pipeline
+the Terraform full setup is written in the `terraform-setup.md` file
+
 ## User Roles
 
 ### Admin User
